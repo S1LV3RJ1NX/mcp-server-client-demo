@@ -13,13 +13,30 @@ from client.logger import logger
 
 
 class MCPClient:
-    """Client for interacting with OpenAI models using MCP tools."""
+    """
+    A client for interacting with OpenAI models using MCP (Model Control Protocol) tools.
+
+    This client enables communication between OpenAI models and MCP tools, allowing
+    the model to execute various functions through a server connection. It handles
+    the connection lifecycle, tool discovery, and query processing with tool execution.
+
+    Attributes:
+        session (Optional[ClientSession]): The active MCP session
+        exit_stack (AsyncExitStack): Manages async context managers
+        openai_client (AsyncOpenAI): OpenAI API client instance
+        model (str): The OpenAI model identifier
+        server_url (str): URL of the MCP server
+        stdio (Optional[Any]): Standard I/O handler
+        write (Optional[Any]): Write stream handler
+    """
 
     def __init__(self, server_url: str, model: str = "gpt-4.1-nano"):
-        """Initialize the OpenAI MCP client.
+        """
+        Initialize the OpenAI MCP client.
 
         Args:
-            model: The OpenAI model to use.
+            server_url (str): The URL of the MCP server to connect to
+            model (str, optional): The OpenAI model to use. Defaults to "gpt-4.1-nano"
         """
         # Initialize session and client objects
         self.session: Optional[ClientSession] = None
@@ -34,7 +51,17 @@ class MCPClient:
         self.write: Optional[Any] = None
 
     async def connect_to_server(self):
-        """Connect to an MCP server using SSE transport."""
+        """
+        Establish connection to the MCP server using Server-Sent Events (SSE) transport.
+
+        This method:
+        1. Creates an SSE transport connection
+        2. Initializes a client session
+        3. Lists available tools from the server
+
+        Raises:
+            ConnectionError: If connection to server fails
+        """
         # Connect to the server using SSE
         sse_transport = await self.exit_stack.enter_async_context(
             sse_client(self.server_url)
@@ -56,10 +83,11 @@ class MCPClient:
             logger.info(f"  - {tool.name}: {tool.description}")
 
     async def get_mcp_tools(self) -> List[Dict[str, Any]]:
-        """Get available tools from the MCP server in OpenAI format.
+        """
+        Retrieve available tools from the MCP server and format them for OpenAI API.
 
         Returns:
-            A list of tools in OpenAI format.
+            List[Dict[str, Any]]: A list of tools formatted according to OpenAI's function calling schema
         """
         tools_result = await self.session.list_tools()
         return [
@@ -75,14 +103,26 @@ class MCPClient:
         ]
 
     async def process_query(self, query: str) -> str:
-        """Process a query using OpenAI and available MCP tools.
-        This can be later switch with a workflow engine like Langgraph.
+        """
+        Process a user query using OpenAI and available MCP tools.
+
+        The process follows these steps:
+        1. Get available tools from the server
+        2. Send initial query to OpenAI
+        3. If tool calls are needed:
+           - Execute each tool call
+           - Get final response with tool results
+        4. Return the final response
 
         Args:
-            query: The user query.
+            query (str): The user's input query
 
         Returns:
-            The response from OpenAI.
+            str: The final response from OpenAI
+
+        Note:
+            This implementation can be replaced with a workflow engine like Langgraph
+            for more complex processing patterns.
         """
         # Get available tools
         tools = await self.get_mcp_tools()
@@ -137,12 +177,28 @@ class MCPClient:
         return assistant_message.content
 
     async def cleanup(self):
-        """Clean up resources."""
+        """
+        Clean up resources and close connections.
+
+        This method ensures proper cleanup of all async resources
+        managed by the exit stack.
+        """
         await self.exit_stack.aclose()
 
 
 async def main(args):
-    """Main entry point for the client."""
+    """
+    Main entry point for the client application.
+
+    This function:
+    1. Creates an MCP client instance
+    2. Connects to the server
+    3. Enters an interactive loop for processing queries
+    4. Handles cleanup on exit
+
+    Args:
+        args: Command line arguments containing server_url and model
+    """
     client = MCPClient(args.server_url, args.model)
     await client.connect_to_server()
 
@@ -160,8 +216,21 @@ async def main(args):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--server-url", type=str, default="http://localhost:8888/sse")
-    parser.add_argument("--model", type=str, default="gpt-4.1-nano")
+    # Set up command line argument parsing
+    parser = argparse.ArgumentParser(
+        description="OpenAI MCP Client - Interactive tool-enabled chat client"
+    )
+    parser.add_argument(
+        "--server-url",
+        type=str,
+        default="http://localhost:8888/sse",
+        help="URL of the MCP server (default: http://localhost:8888/sse)",
+    )
+    parser.add_argument(
+        "--model",
+        type=str,
+        default="gpt-4.1-nano",
+        help="OpenAI model to use (default: gpt-4.1-nano)",
+    )
     args = parser.parse_args()
     asyncio.run(main(args))
