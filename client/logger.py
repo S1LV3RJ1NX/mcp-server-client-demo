@@ -1,7 +1,7 @@
 import logging
 import sys
 
-from sse_server.config import settings
+from client.config import settings
 
 
 def get_logger(name):
