@@ -1,7 +1,7 @@
 import logging
 import sys
 
-from server.config import settings
+from streaming_server.config import settings
 
 
 def get_logger(name):
@@ -11,7 +11,7 @@ def get_logger(name):
     # Only add handler if logger doesn't already have handlers
     if not logger.handlers:
         formatter = logging.Formatter(
-            "%(levelname)s:    %(asctime)s - %(module)s:%(funcName)s:%(lineno)d - %(message)s"
+            "STREAMING %(levelname)s: %(asctime)s - %(module)s:%(funcName)s:%(lineno)d - %(message)s"
         )
         handler = logging.StreamHandler(stream=sys.stdout)
         handler.setFormatter(formatter)

@@ -49,3 +49,16 @@ uv run -m client.client_simple --server-url http://localhost:8888/sse
 ```bash
 uv run -m client.openai_client --server-url http://localhost:8888/sse --model gpt-4.1-nano
 ```
+
+## Test with Universal Client
+
+```bash
+# List available tools
+python -m client.universal_client http://localhost:8001/mcp/ --list-tools
+
+# Call a tool
+python -m client.universal_client http://localhost:8001/mcp/ --tool calculate_fibonacci --args '{"n": 10}'
+
+# Read server status
+python -m client.universal_client http://localhost:8001/mcp/ --resource status://server
+```
