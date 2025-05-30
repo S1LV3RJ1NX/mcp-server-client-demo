@@ -5,7 +5,7 @@ from contextlib import AsyncExitStack
 from typing import Any, Dict, List, Optional
 
 from mcp import ClientSession
-from mcp.client.sse import sse_client
+from mcp.client.streamable_http import streamablehttp_client
 from openai import AsyncOpenAI
 
 from client.config import settings
@@ -52,23 +52,23 @@ class MCPClient:
 
     async def connect_to_server(self):
         """
-        Establish connection to the MCP server using Server-Sent Events (SSE) transport.
+        Establish connection to the MCP server using streamable HTTP transport.
 
         This method:
-        1. Creates an SSE transport connection
+        1. Creates a streamable HTTP transport connection
         2. Initializes a client session
         3. Lists available tools from the server
 
         Raises:
             ConnectionError: If connection to server fails
         """
-        # Connect to the server using SSE
-        sse_transport = await self.exit_stack.enter_async_context(
-            sse_client(self.server_url)
+        # Connect to the server using streamable HTTP
+        streamable_transport = await self.exit_stack.enter_async_context(
+            streamablehttp_client(self.server_url)
         )
-        read_stream, write_stream = sse_transport
+        read_stream, write_stream, _ = streamable_transport
 
-        # Create session with SSE transport
+        # Create session with streamable HTTP transport
         self.session = await self.exit_stack.enter_async_context(
             ClientSession(read_stream, write_stream)
         )
@@ -78,7 +78,7 @@ class MCPClient:
 
         # List available tools
         tools_result = await self.session.list_tools()
-        logger.info("\nConnected to server with tools:")
+        logger.info("\nConnected to streaming server with tools:")
         for tool in tools_result.tools:
             logger.info(f"  - {tool.name}: {tool.description}")
 
@@ -192,7 +192,7 @@ async def main(args):
 
     This function:
     1. Creates an MCP client instance
-    2. Connects to the server
+    2. Connects to the streaming server
     3. Enters an interactive loop for processing queries
     4. Handles cleanup on exit
 
@@ -223,8 +223,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "--server-url",
         type=str,
-        default="http://localhost:8888/sse",
-        help="URL of the MCP server (default: http://localhost:8888/sse)",
+        default="http://localhost:8001/mcp",
+        help="URL of the MCP server (default: http://localhost:8001/mcp)",
     )
     parser.add_argument(
         "--model",
